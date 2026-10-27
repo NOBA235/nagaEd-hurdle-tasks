@@ -4,6 +4,8 @@ import cors from 'cors';
 import { env } from './config/env.js';
 import authRoutes from './routes/auth.routes.js';
 import usersRoutes from './routes/users.routes.js';
+import { notFoundHandler } from './middleware/not-found.js';
+import { errorHandler } from './middleware/error-handler.js';
 
 const app = express();
 
@@ -41,43 +43,10 @@ app.get('/api/health', (_req, res) => {
 app.use('/api', authRoutes);
 app.use('/api/users', usersRoutes);
 
-// 6. Fallback 404 Handler (will be moved to src/middleware/not-found.js in Phase 6)
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    error: {
-      code: 'NOT_FOUND',
-      message: `Route ${req.method} ${req.originalUrl} not found`,
-      details: [],
-    },
-  });
-});
+// 6. 404 Route Not Found Middleware
+app.use(notFoundHandler);
 
-// 7. Basic Error Handler (will be expanded in src/middleware/error-handler.js in Phase 6)
-app.use((err, _req, res, _next) => {
-  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
-    return res.status(400).json({
-      success: false,
-      error: {
-        code: 'INVALID_JSON',
-        message: 'Malformed JSON in request body',
-        details: [],
-      },
-    });
-  }
-
-  const statusCode = err.statusCode || 500;
-  res.status(statusCode).json({
-    success: false,
-    error: {
-      code: err.code || 'INTERNAL_SERVER_ERROR',
-      message:
-        env.NODE_ENV === 'production' && statusCode === 500
-          ? 'An unexpected internal error occurred'
-          : err.message || 'An unexpected internal error occurred',
-      details: err.details || [],
-    },
-  });
-});
+// 7. Centralised Error Handling Middleware
+app.use(errorHandler);
 
 export default app;
