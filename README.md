@@ -4,9 +4,9 @@ A small full-stack application: a React frontend, a Node.js (Express) REST API b
 
 ## Author
 
-- **Name:** `<your full name>`
-- **Email:** `<your email>`
-- **Phone:** `<your phone>`
+- **Name:** `Noba`
+- **Email:** `nanova556@gmail.com`
+- **Phone:** `9862258887`
 
 ## Architecture
 
