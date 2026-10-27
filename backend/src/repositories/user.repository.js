@@ -35,3 +35,18 @@ export async function createUser({ username, email, passwordHash, address }) {
   };
 }
 
+/**
+ * Looks up a single user record by their primary key id.
+ * Excludes password_hash from the SQL SELECT query projection for security.
+ */
+export async function findUserById(id) {
+  const [rows] = await pool.execute(
+    `SELECT id, username, email, address, created_at, updated_at
+     FROM users
+     WHERE id = ?
+     LIMIT 1`,
+    [id]
+  );
+
+  return rows[0] || null;
+}

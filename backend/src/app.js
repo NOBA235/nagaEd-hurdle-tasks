@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import cors from 'cors';
 import { env } from './config/env.js';
 import authRoutes from './routes/auth.routes.js';
+import usersRoutes from './routes/users.routes.js';
 
 const app = express();
 
@@ -38,6 +39,7 @@ app.get('/api/health', (_req, res) => {
 
 // 5. API Routes
 app.use('/api', authRoutes);
+app.use('/api/users', usersRoutes);
 
 // 6. Fallback 404 Handler (will be moved to src/middleware/not-found.js in Phase 6)
 app.use((req, res) => {

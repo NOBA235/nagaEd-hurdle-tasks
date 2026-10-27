@@ -44,6 +44,13 @@ export const loginSchema = z.object({
     .max(72, 'Password must not exceed 72 characters'),
 });
 
+export const userIdParamSchema = z.object({
+  id: z.coerce
+    .number({ error: 'User ID parameter must be a valid number' })
+    .int('User ID must be an integer')
+    .positive('User ID must be a positive integer'),
+});
+
 /**
  * Validates and normalises a payload against a Zod schema.
  * Throws a standardised HTTP 400 AppError if validation fails.
