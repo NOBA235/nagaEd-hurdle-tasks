@@ -1,7 +1,7 @@
 import json
 import re
 from typing import List, Optional
-from groq import Groq, APITimeoutError, RateLimitError, AuthenticationError, APIError
+from groq import Groq, APITimeoutError, RateLimitError, AuthenticationError, NotFoundError, APIError
 from fastapi import HTTPException
 from app.core.config import settings
 
@@ -43,32 +43,52 @@ class GroqService:
 
         user_prompt = f"User interests: [{interests_str}]. Generate exactly 3 unique username suggestions in JSON."
 
-        try:
-            client = self.client
-            response = client.chat.completions.create(
-                model=settings.GROQ_MODEL,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=0.8,
-                max_tokens=200,
-                response_format={"type": "json_object"}
-            )
+        # Support model auto-selection across different Groq account tiers
+        model_candidates = [
+            settings.GROQ_MODEL,
+            "openai/gpt-oss-20b",
+            "openai/gpt-oss-120b",
+            "qwen/qwen3.8-27b",
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant"
+        ]
 
-            raw_content = response.choices[0].message.content
-            parsed = json.loads(raw_content)
+        unique_models = list(dict.fromkeys(model_candidates))
 
-            raw_suggestions = parsed.get("suggestions", [])
-            normalized = self._normalize_and_filter(raw_suggestions, interests)
+        client = self.client
+        last_error = None
 
-            if len(normalized) == 3:
-                return normalized
+        for model_name in unique_models:
+            try:
+                response = client.chat.completions.create(
+                    model=model_name,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    temperature=0.8,
+                    max_tokens=200,
+                    response_format={"type": "json_object"}
+                )
 
-            # If the LLM returned fewer than 3 valid items, supplement with deterministic fallback
-            return self._fill_suggestions(normalized, interests)
+                raw_content = response.choices[0].message.content
+                parsed = json.loads(raw_content)
 
-        except AuthenticationError:
+                raw_suggestions = parsed.get("suggestions", [])
+                normalized = self._normalize_and_filter(raw_suggestions, interests)
+
+                if len(normalized) == 3:
+                    return normalized
+
+                return self._fill_suggestions(normalized, interests)
+
+            except (NotFoundError, APIError, json.JSONDecodeError, KeyError, IndexError, ValueError) as e:
+                last_error = e
+                if isinstance(e, (AuthenticationError, RateLimitError, APITimeoutError)):
+                    break
+                continue
+
+        if isinstance(last_error, AuthenticationError):
             raise HTTPException(
                 status_code=401,
                 detail={
@@ -76,7 +96,7 @@ class GroqService:
                     "message": "Authentication failed with the Groq API. Please verify GROQ_API_KEY."
                 }
             )
-        except RateLimitError:
+        elif isinstance(last_error, RateLimitError):
             raise HTTPException(
                 status_code=429,
                 detail={
@@ -84,7 +104,7 @@ class GroqService:
                     "message": "Groq API rate limit reached. Please try again in a few moments."
                 }
             )
-        except APITimeoutError:
+        elif isinstance(last_error, APITimeoutError):
             raise HTTPException(
                 status_code=504,
                 detail={
@@ -92,11 +112,9 @@ class GroqService:
                     "message": "The upstream AI service timed out while generating suggestions."
                 }
             )
-        except HTTPException:
-            raise
-        except (json.JSONDecodeError, KeyError, IndexError, APIError):
-            # Fallback to algorithmic generation if LLM output is malformed
-            return self._generate_fallback_suggestions(interests)
+
+        # Fallback to algorithmic generation if all models failed or output malformed
+        return self._generate_fallback_suggestions(interests)
 
     def _normalize_and_filter(self, names: List[str], interests: List[str]) -> List[str]:
         seen = set()
@@ -104,7 +122,6 @@ class GroqService:
         for name in names:
             if not isinstance(name, str):
                 continue
-            # Keep only alphanumeric characters
             sanitized = re.sub(r"[^a-zA-Z0-9]", "", name.strip())
             if 3 <= len(sanitized) <= 22 and sanitized.lower() not in seen:
                 seen.add(sanitized.lower())
@@ -126,9 +143,6 @@ class GroqService:
         return result[:3]
 
     def _generate_fallback_suggestions(self, interests: List[str]) -> List[str]:
-        """
-        Deterministic, creative fallback generator when LLM is unavailable or outputs malformed data.
-        """
         prefixes = ["Pixel", "Code", "Byte", "Nova", "Cyber", "Tech", "Echo", "Zenith", "Apex", "Aura"]
         suffixes = ["Craft", "Rhythm", "Dev", "Explorer", "Forge", "Vibe", "Wave", "Flow", "Sync", "Hub"]
 
@@ -137,11 +151,8 @@ class GroqService:
             clean_interests = ["NagaEd", "Builder", "Creator"]
 
         suggestions = []
-        # Pattern 1: Prefix + Interest
         suggestions.append(f"{prefixes[0]}{clean_interests[0]}")
-        # Pattern 2: Interest + Suffix
         suggestions.append(f"{clean_interests[-1]}{suffixes[0]}")
-        # Pattern 3: Prefix + Suffix or 2nd Interest
         second = clean_interests[1] if len(clean_interests) > 1 else suffixes[1]
         suggestions.append(f"{prefixes[1]}{second}")
 
@@ -151,4 +162,3 @@ groq_service = GroqService()
 
 def get_groq_service() -> GroqService:
     return groq_service
-
