@@ -2,6 +2,7 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import { env } from './config/env.js';
+import authRoutes from './routes/auth.routes.js';
 
 const app = express();
 
@@ -35,7 +36,10 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-// 5. Fallback 404 Handler (will be moved to src/middleware/not-found.js in Phase 6)
+// 5. API Routes
+app.use('/api', authRoutes);
+
+// 6. Fallback 404 Handler (will be moved to src/middleware/not-found.js in Phase 6)
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -47,7 +51,7 @@ app.use((req, res) => {
   });
 });
 
-// 6. Basic Error Handler (will be expanded in src/middleware/error-handler.js in Phase 6)
+// 7. Basic Error Handler (will be expanded in src/middleware/error-handler.js in Phase 6)
 app.use((err, _req, res, _next) => {
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
     return res.status(400).json({
@@ -75,4 +79,3 @@ app.use((err, _req, res, _next) => {
 });
 
 export default app;
-
