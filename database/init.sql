@@ -1,8 +1,3 @@
--- ============================================================================
--- NagaEd Software Developer Hurdle Task — Database Initialization
--- File: database/init.sql
--- Executed automatically on first container boot by /docker-entrypoint-initdb.d
--- ============================================================================
 
 CREATE DATABASE IF NOT EXISTS nagaed_assessment
   CHARACTER SET utf8mb4
