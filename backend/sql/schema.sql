@@ -1,7 +1,3 @@
--- ============================================================================
--- NagaEd Software Developer Hurdle Task 1 — MySQL 8 Schema
--- File: backend/sql/schema.sql
--- ============================================================================
 
 CREATE DATABASE IF NOT EXISTS nagaed_assessment
   CHARACTER SET utf8mb4

@@ -30,6 +30,20 @@ export const registerSchema = z.object({
     .max(255, 'Address must not exceed 255 characters'),
 });
 
+export const loginSchema = z.object({
+  email: z
+    .string({ error: 'Email is required and must be a string' })
+    .trim()
+    .toLowerCase()
+    .email('Please provide a valid email address')
+    .max(255, 'Email must not exceed 255 characters'),
+
+  password: z
+    .string({ error: 'Password is required and must be a string' })
+    .min(1, 'Password is required')
+    .max(72, 'Password must not exceed 72 characters'),
+});
+
 /**
  * Validates and normalises a payload against a Zod schema.
  * Throws a standardised HTTP 400 AppError if validation fails.
@@ -48,4 +62,3 @@ export function validateSchema(schema, payload) {
 
   return result.data;
 }
-
