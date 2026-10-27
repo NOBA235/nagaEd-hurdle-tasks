@@ -14,17 +14,17 @@ A small full-stack application: a React frontend, a Node.js (Express) REST API b
 
 | Service | Tech | Host port | Role |
 | :--- | :--- | :--- | :--- |
-| `frontend` | React (Vite), served by Nginx | 80 | Register, Login, Dashboard, username generator |
+| `frontend` | React (Vite), served by Nginx | 80 | Register, Login, Dashboard, username generator + `/api` reverse proxy |
 | `backend` | Node.js, Express 5 | 5000 | Auth API, JWT, MySQL access |
 | `ai-service` | Python, FastAPI | 8000 | Calls Groq, returns 3 username suggestions |
-| `mysql` | MySQL 8 | 3306 | Persistent user storage (named volume) |
+| `mysql` | MySQL 8 | *(internal 3306)* | Persistent user storage (named volume, not exposed publicly) |
 
 How they communicate:
 
-- The browser loads the React app from `frontend`, then calls `backend` (`/api/*`) and `ai-service` (`/api/suggest-username`) directly on their published host ports.
-- `backend` reaches MySQL over the Compose network as `mysql:3306` (service name, not `localhost`).
+- In Docker Compose, `frontend` (Nginx) serves the React SPA and reverse-proxies `/api/suggest-username` to `http://ai-service:8000` and `/api/*` to `http://backend:5000` by Docker container service name. Ports `5000` and `8000` are also published for direct API/Swagger inspection.
+- `backend` reaches MySQL over the Compose network as `mysql:3306` (service name, not `localhost`), and MySQL is kept internal to the container network.
 - `ai-service` calls the Groq API over HTTPS using `GROQ_API_KEY`.
-- The AI call is independent of auth: if `ai-service` or Groq is down, register, login and the dashboard still work.
+- Users can generate AI username suggestions both **during registration** (clicking a suggestion chip fills the username field) and **from the dashboard**. The AI call is independent of auth: if `ai-service` or Groq is down, register, login and the dashboard still work.
 
 ## Run with Docker Compose
 
@@ -148,14 +148,13 @@ cd ai-service
 
 - **Layering (backend):** routes → controllers → services → repositories, with Zod schemas for input validation and centralised error middleware.
 - **SQL safety:** all queries are parameterised (`pool.execute` with `?`).
-- **Auth:** JWT (HS256, explicit expiry) verified by middleware; ownership check on `GET /api/users/:id`. Login compares against a dummy hash when the email does not exist, to avoid a timing-based user enumeration.
+- **Auth & security:** JWT (HS256, explicit expiry) verified by middleware; ownership check on `GET /api/users/:id`; sliding-window rate limiting on `/api/login` and `/api/register`. Login compares against a dummy hash when the email does not exist, to avoid timing-based user enumeration.
 - **Config:** the backend validates environment variables at startup and exits if they are missing or invalid.
-- **Containers:** multi-stage builds, `.dockerignore` in each service, non-root users in the backend and AI images, health checks in Compose.
+- **Containers:** two-stage multi-stage builds across all three app Dockerfiles (`frontend`, `backend`, `ai-service`), `.dockerignore` in each service, non-root users in the backend and AI images, internal-only MySQL port, and health checks in Compose.
 - **Prompt (AI service):** the model is told to return exactly three alphanumeric, PascalCase usernames as JSON; output is parsed, sanitised, de-duplicated and topped up with a deterministic fallback if the model returns fewer than three valid names.
 
 ## Known limitations
 
-- The JWT is kept in `localStorage` for simplicity. An httpOnly cookie would be safer against XSS but needs additional CORS/CSRF handling.
-- No refresh tokens, email verification or password reset.
-- No rate limiting on `/api/login` or `/api/register`.
-- The AI endpoint is unauthenticated; the dashboard only exposes it to signed-in users.
+- The JWT is kept in `localStorage` for simplicity. An `httpOnly` cookie would be safer against XSS in production, paired with CSRF protection.
+- No refresh tokens, email verification or password reset flows.
+- Rate limiting on `/api/login` and `/api/register` uses an in-memory store per process (a multi-replica deployment would use Redis).

@@ -221,6 +221,106 @@ body {
   color: #334155;
 }
 
+.label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.btn-link-ai {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.btn-link-ai:hover {
+  text-decoration: underline;
+}
+
+.inline-ai-panel {
+  margin-top: 0.4rem;
+  padding: 0.75rem;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.inline-ai-label {
+  font-size: 0.78rem !important;
+  color: #475569 !important;
+}
+
+.inline-ai-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.inline-ai-input-row input {
+  flex: 1;
+  padding: 0.45rem 0.65rem;
+  font-size: 0.85rem;
+}
+
+.btn-ai-small {
+  background-color: #6366f1;
+  color: #ffffff;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-ai-small:hover:not(:disabled) {
+  background-color: #4f46e5;
+}
+
+.btn-ai-small:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.inline-ai-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.2rem;
+}
+
+.chips-caption {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.chip-btn {
+  background-color: #ede9fe;
+  color: #4c1d95;
+  border: 1px solid #ddd6fe;
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.chip-btn:hover,
+.chip-btn.chip-active {
+  background-color: #6366f1;
+  color: #ffffff;
+  border-color: #6366f1;
+}
+
 .form-group input {
   padding: 0.65rem 0.85rem;
   border: 1px solid var(--border-color);

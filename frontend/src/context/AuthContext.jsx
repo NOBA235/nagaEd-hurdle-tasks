@@ -1,7 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { authService } from '../services/auth.service';
-
-const AuthContext = createContext(null);
+import { AuthContext } from './auth-context';
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('nagaed_token') || null);
@@ -13,7 +12,6 @@ export function AuthProvider({ children }) {
       return null;
     }
   });
-  const [loading, setLoading] = useState(true);
 
   // Sync state if unauthorized event is dispatched from API interceptor
   useEffect(() => {
@@ -22,35 +20,35 @@ export function AuthProvider({ children }) {
       setUser(null);
     }
     window.addEventListener('auth:unauthorized', handleUnauthorized);
-    setLoading(false);
     return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
   }, []);
 
-  const login = async (credentials) => {
+  const login = useCallback(async (credentials) => {
     const data = await authService.login(credentials);
-    // data has shape { token, user: { id, username, email, address } }
     setToken(data.token);
     setUser(data.user);
     localStorage.setItem('nagaed_token', data.token);
     localStorage.setItem('nagaed_user', JSON.stringify(data.user));
     return data.user;
-  };
+  }, []);
 
-  const register = async (formData) => {
+  const register = useCallback(async (formData) => {
     return await authService.register(formData);
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setToken(null);
     setUser(null);
     localStorage.removeItem('nagaed_token');
     localStorage.removeItem('nagaed_user');
-  };
+  }, []);
 
-  const refreshProfile = async () => {
-    if (!user?.id) return;
+  const userId = user?.id;
+
+  const refreshProfile = useCallback(async () => {
+    if (!userId) return null;
     try {
-      const freshUser = await authService.getUserProfile(user.id);
+      const freshUser = await authService.getUserProfile(userId);
       setUser(freshUser);
       localStorage.setItem('nagaed_user', JSON.stringify(freshUser));
       return freshUser;
@@ -60,27 +58,21 @@ export function AuthProvider({ children }) {
       }
       throw err;
     }
-  };
+  }, [userId, logout]);
 
-  const value = {
-    user,
-    token,
-    isAuthenticated: !!token && !!user,
-    loading,
-    login,
-    register,
-    logout,
-    refreshProfile,
-  };
+  const value = useMemo(
+    () => ({
+      user,
+      token,
+      isAuthenticated: !!token && !!user,
+      loading: false,
+      login,
+      register,
+      logout,
+      refreshProfile,
+    }),
+    [user, token, login, register, logout, refreshProfile]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-}
-

@@ -1,6 +1,6 @@
 services:
   # ============================================================================
-  # 1. MySQL 8 Database Service
+  # 1. MySQL 8 Database Service (Internal network only — not exposed publicly)
   # ============================================================================
   mysql:
     image: mysql:8.0
@@ -11,8 +11,8 @@ services:
       MYSQL_DATABASE: ${DB_NAME:-nagaed_assessment}
       MYSQL_USER: ${DB_USER:-nagaed_user}
       MYSQL_PASSWORD: ${DB_PASSWORD:-RootSecretPassword123!}
-    ports:
-      - "${DB_PORT:-3306}:3306"
+    expose:
+      - "3306"
     volumes:
       - mysql_data:/var/lib/mysql
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -89,15 +89,15 @@ services:
       - nagaed-network
 
   # ============================================================================
-  # 4. React Frontend (Nginx Production Server)
+  # 4. React Frontend (Nginx Production Server & Internal Reverse Proxy)
   # ============================================================================
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:5000/api}
-        VITE_AI_SERVICE_URL: ${VITE_AI_SERVICE_URL:-http://localhost:8000/api}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
+        VITE_AI_SERVICE_URL: ${VITE_AI_SERVICE_URL:-/api}
     container_name: nagaed-frontend
     restart: unless-stopped
     depends_on:
@@ -107,7 +107,6 @@ services:
         condition: service_healthy
     ports:
       - "80:80"
-      - "5173:80"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:80/healthz || exit 1"]
       interval: 10s
@@ -124,4 +123,3 @@ networks:
   nagaed-network:
     name: nagaed_network
     driver: bridge
-

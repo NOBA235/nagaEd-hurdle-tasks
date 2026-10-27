@@ -1,25 +1,25 @@
-# Multi-stage production container for NagaEd Express API
+# Stage 1: Install production dependencies cleanly
+FROM node:20-alpine AS dependencies
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+# Stage 2: Minimal production runtime image
 FROM node:20-alpine AS production
 
 WORKDIR /app
-
-# Set production environment
 ENV NODE_ENV=production
 
-# Install dependencies (only production packages)
+# Copy pruned node_modules from dependencies stage
+COPY --from=dependencies /app/node_modules ./node_modules
 COPY package*.json ./
-RUN npm ci --omit=dev
-
-# Copy application source code
 COPY src/ ./src/
 COPY sql/ ./sql/
 
-# Switch to non-root user for container security
+# Run as non-root user
 USER node
 
-# Expose API port
 EXPOSE 5000
 
-# Start server with graceful shutdown handling
 CMD ["node", "src/server.js"]
-

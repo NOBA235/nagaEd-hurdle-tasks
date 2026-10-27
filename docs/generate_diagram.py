@@ -74,13 +74,14 @@ def main():
 
     # Services
     card(ax, 0.8, 3.1, 3.0, 2.3, C_FRONT, "frontend", "Nginx \u00b7 host port 80",
-         ["Serves the built React app", "SPA routing (try_files)", "gzip + security headers"])
+         ["Serves the built React app", "Proxies /api/* -> backend:5000",
+          "Proxies /api/suggest -> ai-service:8000", "gzip + security headers"])
     card(ax, 4.4, 3.1, 3.2, 2.3, C_BACK, "backend", "Node.js / Express \u00b7 port 5000",
          ["POST /api/register", "POST /api/login", "GET /api/users/:id (JWT)", "Zod validation, non-root user"])
     card(ax, 8.2, 3.1, 3.2, 2.3, C_AI, "ai-service", "FastAPI \u00b7 port 8000",
          ["POST /api/suggest-username", "Pydantic models, /health, /docs", "Model + algorithmic fallback",
           "non-root user"])
-    card(ax, 4.4, 0.55, 3.2, 1.95, C_DB, "mysql", "MySQL 8 \u00b7 port 3306",
+    card(ax, 4.4, 0.55, 3.2, 1.95, C_DB, "mysql", "MySQL 8 \u00b7 internal :3306",
          ["DB nagaed_assessment, table users", "UNIQUE(email), schema from init.sql", "Volume: nagaed_mysql_data"])
 
     # External: Groq
@@ -90,13 +91,14 @@ def main():
 
     # Browser -> services (straight down, no crossings)
     arrow(ax, (2.3, 6.55), (2.3, 5.4), C_FRONT)
-    label(ax, 2.45, 6.1, "HTTP GET  (HTML / JS / CSS)", '#93c5fd', '#172554')
+    label(ax, 2.45, 6.1, "HTTP :80  (UI + /api proxy)", '#93c5fd', '#172554')
     arrow(ax, (6.0, 6.55), (6.0, 5.4), C_BACK)
     label(ax, 6.15, 6.1, "REST + JSON  (/api/*)", C_BACK, '#064e3b')
     arrow(ax, (9.8, 6.55), (9.8, 5.4), C_AI)
     label(ax, 9.95, 6.1, "POST /api/suggest-username", '#c4b5fd', '#3b0764')
 
-    # backend <-> mysql
+    # Nginx internal service-name routing arrows
+    arrow(ax, (3.8, 4.25), (4.4, 4.25), C_FRONT)
     arrow(ax, (6.0, 3.1), (6.0, 2.5), C_DB, both=True)
     label(ax, 6.15, 2.8, "mysql:3306 \u00b7 pooled, parameterised SQL", C_DB, '#451a03')
 
@@ -104,8 +106,8 @@ def main():
     arrow(ax, (11.4, 4.25), (12.6, 4.25), C_GROQ, both=True)
     label(ax, 12.0, 4.6, "HTTPS", '#e9d5ff', '#2e1065', ha='center')
 
-    ax.text(8, 0.15, "Browser calls backend (:5000) and ai-service (:8000) directly; "
-            "backend reaches MySQL by service name.", ha='center', va='center', color=MUTED, fontsize=9)
+    ax.text(8, 0.15, "Nginx reverse-proxies /api/* to backend:5000 and ai-service:8000 by service name; "
+            "backend reaches mysql:3306 internally.", ha='center', va='center', color=MUTED, fontsize=9)
 
     os.makedirs('docs', exist_ok=True)
     for path in (os.path.join('docs', 'architecture.png'), 'architecture.png'):

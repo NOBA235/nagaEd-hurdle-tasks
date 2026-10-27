@@ -43,14 +43,15 @@ class GroqService:
 
         user_prompt = f"User interests: [{interests_str}]. Generate exactly 3 unique username suggestions in JSON."
 
-        # Support model auto-selection across different Groq account tiers
+        # Try configured and standard Groq Llama/Mixtral models first, with fallback
+        # to additional active Groq catalog models if an account tier restricts a model ID.
         model_candidates = [
             settings.GROQ_MODEL,
+            "llama-3.3-70b-versatile",
+            "llama-3.1-8b-instant",
+            "mixtral-8x7b-32768",
             "openai/gpt-oss-20b",
             "openai/gpt-oss-120b",
-            "qwen/qwen3.8-27b",
-            "llama-3.3-70b-versatile",
-            "llama-3.1-8b-instant"
         ]
 
         unique_models = list(dict.fromkeys(model_candidates))

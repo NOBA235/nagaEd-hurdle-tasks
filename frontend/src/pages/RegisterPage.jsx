@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
+import { aiService } from '../services/ai.service';
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -17,6 +18,13 @@ export default function RegisterPage() {
   const [serverError, setServerError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Inline AI Username Suggestion state
+  const [showAiHelper, setShowAiHelper] = useState(false);
+  const [interestsInput, setInterestsInput] = useState('coding, music, gaming');
+  const [aiSuggestions, setAiSuggestions] = useState([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
 
   // Client-side validation
   const validateForm = () => {
@@ -56,11 +64,40 @@ export default function RegisterPage() {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    // Clear field-specific error as user types
     if (errors[name]) {
       setErrors((prev) => ({ ...prev, [name]: '' }));
     }
     setServerError('');
+  };
+
+  const handleSuggestUsernames = async () => {
+    setAiError('');
+    const parsedInterests = interestsInput
+      .split(',')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0);
+
+    if (parsedInterests.length === 0) {
+      setAiError('Enter at least one interest (comma-separated).');
+      return;
+    }
+
+    setAiLoading(true);
+    try {
+      const results = await aiService.suggestUsernames(parsedInterests);
+      setAiSuggestions(results);
+    } catch (err) {
+      setAiError(err.message || 'Could not reach AI username service.');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleSelectSuggestion = (suggestedName) => {
+    setFormData((prev) => ({ ...prev, username: suggestedName }));
+    if (errors.username) {
+      setErrors((prev) => ({ ...prev, username: '' }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -121,7 +158,16 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} noValidate className="auth-form">
           <div className="form-group">
-            <label htmlFor="username">Username</label>
+            <div className="label-row">
+              <label htmlFor="username">Username</label>
+              <button
+                type="button"
+                className="btn-link-ai"
+                onClick={() => setShowAiHelper((prev) => !prev)}
+              >
+                {showAiHelper ? 'Hide AI Helper' : '✨ Suggest with AI'}
+              </button>
+            </div>
             <input
               id="username"
               name="username"
@@ -134,6 +180,48 @@ export default function RegisterPage() {
               autoComplete="username"
             />
             {errors.username && <span className="error-text">{errors.username}</span>}
+
+            {showAiHelper && (
+              <div className="inline-ai-panel">
+                <label htmlFor="reg-interests" className="inline-ai-label">
+                  Your interests (comma-separated)
+                </label>
+                <div className="inline-ai-input-row">
+                  <input
+                    id="reg-interests"
+                    type="text"
+                    value={interestsInput}
+                    onChange={(e) => setInterestsInput(e.target.value)}
+                    placeholder="coding, music, gaming"
+                    disabled={aiLoading}
+                  />
+                  <button
+                    type="button"
+                    className="btn-ai-small"
+                    onClick={handleSuggestUsernames}
+                    disabled={aiLoading}
+                  >
+                    {aiLoading ? 'Generating...' : 'Generate'}
+                  </button>
+                </div>
+                {aiError && <span className="error-text">{aiError}</span>}
+                {aiSuggestions.length > 0 && (
+                  <div className="inline-ai-chips">
+                    <span className="chips-caption">Click to use:</span>
+                    {aiSuggestions.map((name) => (
+                      <button
+                        key={name}
+                        type="button"
+                        className={`chip-btn ${formData.username === name ? 'chip-active' : ''}`}
+                        onClick={() => handleSelectSuggestion(name)}
+                      >
+                        {name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="form-group">
@@ -201,4 +289,3 @@ export default function RegisterPage() {
     </div>
   );
 }
-

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/useAuth';
 import { aiService } from '../services/ai.service';
 
 export default function DashboardPage() {
@@ -45,7 +45,7 @@ export default function DashboardPage() {
     return () => {
       isMounted = false;
     };
-  }, [user?.id]);
+  }, [user?.id, refreshProfile]);
 
   // Handle AI Username Generation
   const handleGenerateSuggestions = async (e) => {
